@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import Link from "next/link";
 
 const events = [
@@ -7,11 +9,24 @@ const events = [
 ];
 
 export default function EventsPage() {
+  const [search, setSearch] = useState("");
+
+  const filtered = events.filter(e =>
+    e.title.toLowerCase().includes(search.toLowerCase()) ||
+    e.venue.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Upcoming Events</h1>
+      <h1 className="text-2xl font-bold mb-4">Upcoming Events</h1>
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-md bg-gray-800 border border-gray-700 rounded-full px-4 py-2 mb-6 text-white"
+        placeholder="Search events or cities..."
+      />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {events.map((event) => (
+        {filtered.map((event) => (
           <Link key={event.id} href={`/events/${event.id}`} className="border border-gray-700 rounded-xl p-4 hover:border-white transition">
             <div className="text-4xl mb-4">{event.image}</div>
             <h2 className="text-lg font-bold">{event.title}</h2>
@@ -21,6 +36,7 @@ export default function EventsPage() {
           </Link>
         ))}
       </div>
+      {filtered.length === 0 && <p className="text-gray-400 mt-4">No events found.</p>}
     </div>
   );
 }
