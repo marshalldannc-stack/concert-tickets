@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 const events = [
-  { id: "1", title: "Afrobeats Fest 2026", date: "Aug 15, 2026", venue: "Eko Hotel, Lagos", price: "From 5,000 NGN", image: "🎵" },
-  { id: "2", title: "Lagos Jazz Night", date: "Sep 2, 2026", venue: "Terra Kulture, Lagos", price: "From 10,000 NGN", image: "🎷" },
-  { id: "3", title: "Amapiano Explosion", date: "Sep 20, 2026", venue: "Balmoral Convention Center", price: "From 7,500 NGN", image: "🔥" },
+  { id: "1", title: "Summer Jam Festival", date: "Aug 25, 2026", venue: "Madison Square Garden, NYC", price: "From $50", image: "🎵" },
+  { id: "2", title: "Jazz Under the Stars", date: "Sep 10, 2026", venue: "Hollywood Bowl, LA", price: "From $75", image: "🎷" },
+  { id: "3", title: "Electric Nights Tour", date: "Sep 30, 2026", venue: "United Center, Chicago", price: "From $60", image: "🔥" },
 ];
 
 export default function EventsPage() {

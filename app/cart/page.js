@@ -15,12 +15,18 @@ export default function CartPage() {
     const res = await fetch("/api/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: cart.total / 1500, orderId: "order_" + Date.now() }),
+      body: JSON.stringify({ amount: cart.total, orderId: "order_" + Date.now() }),
     });
     const data = await res.json();
     setLoading(false);
-    if (data.invoice_url) window.location.href = data.invoice_url;
-    else alert("Payment error. Use support chat.");
+    if (data.invoice_url) {
+      const orders = JSON.parse(localStorage.getItem("orders") || "[]");
+      orders.push({ id: "order_" + Date.now(), event: cart.event, total: cart.total, status: "Paid" });
+      localStorage.setItem("orders", JSON.stringify(orders));
+      window.location.href = data.invoice_url;
+    } else {
+      alert("Payment error. Use support chat.");
+    }
   };
 
   if (!cart) return <p className="text-center mt-10">Cart is empty</p>;
@@ -32,10 +38,10 @@ export default function CartPage() {
       {cart.items.map((item, i) => (
         <div key={i} className="flex justify-between py-2 border-b border-gray-700">
           <span>{item.name} x{item.qty}</span>
-          <span>₦{(item.price * item.qty).toLocaleString()}</span>
+          <span>${item.price * item.qty}</span>
         </div>
       ))}
-      <p className="text-xl font-bold mt-4">Total: ₦{cart.total.toLocaleString()}</p>
+      <p className="text-xl font-bold mt-4">Total: ${cart.total}</p>
       <button onClick={pay} disabled={loading} className="w-full mt-6 bg-green-600 text-white px-6 py-3 rounded-full font-bold">
         {loading ? "Loading..." : "Pay with Crypto"}
       </button>
