@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model User {
+  id       String        @id @default(cuid())
+  email    String        @unique
+  password String
+  role     String        @default("user")
+  orders   Order[]
+  messages ChatMessage[]
+}
+
+model Concert {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  venue       String
+  image       String?
+  ticketTypes TicketType[]
+}
+
+model TicketType {
+  id         String      @id @default(cuid())
+  concertId  String
+  concert    Concert     @relation(fields: [concertId], references: [id])
+  name       String
+  price      Float
+  quantity   Int
+  sold       Int         @default(0)
+  orderItems OrderItem[]
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  status    String      @default("pending")
+  total     Float
+  chargeId  String?
+  createdAt DateTime    @default(now())
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id])
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  quantity     Int
+  price        Float
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  text      String
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
