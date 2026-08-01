@@ -21,18 +21,23 @@ function ChatContent() {
 
   useEffect(() => {
     if (!userId) return;
+    let active = true;
     fetch(`/api/chat?userId=${userId}`)
       .then(r => r.json())
       .then(data => {
-        setMessages(data);
-        setLoading(false);
+        if (active && data) {
+          setMessages(data);
+          setLoading(false);
+        }
       });
     const interval = setInterval(() => {
       fetch(`/api/chat?userId=${userId}`)
         .then(r => r.json())
-        .then(data => setMessages(data));
+        .then(data => {
+          if (active && data && data.length > 0) setMessages(data);
+        });
     }, 5000);
-    return () => clearInterval(interval);
+    return () => { active = false; clearInterval(interval); };
   }, [userId]);
 
   useEffect(() => {
@@ -66,9 +71,6 @@ function ChatContent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, text: msg, isAdmin: false }),
     });
-    const res = await fetch(`/api/chat?userId=${userId}`);
-    const data = await res.json();
-    setMessages(data);
   };
 
   const handleImage = async (e) => {
@@ -83,9 +85,6 @@ function ChatContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, text: "", image: img, isAdmin: false }),
       });
-      const res = await fetch(`/api/chat?userId=${userId}`);
-      const data = await res.json();
-      setMessages(data);
     };
     reader.readAsDataURL(file);
   };
