@@ -14,30 +14,18 @@ export default function EventDetail() {
   const [view, setView] = useState("sections");
 
   useEffect(() => {
-    fetch(`https://app.ticketmaster.com/discovery/v2/events/${id}.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk`)
+    const cached = sessionStorage.getItem(`event-${id}`);
+    if (cached) {
+      setEvent(JSON.parse(cached));
+      setLoading(false);
+      return;
+    }
+    fetch(`/api/event?id=${encodeURIComponent(id)}`)
       .then(r => r.json())
       .then(data => {
-        const rawMin = data.priceRanges?.[0]?.min || 0;
-        const rawMax = data.priceRanges?.[0]?.max || 0;
-        const floorPrice = rawMax > 0 ? rawMax : 199;
-        const lowerPrice = rawMax > 0 && rawMin > 0 ? Math.round((rawMin + rawMax) / 2) : 99;
-        const upperPrice = rawMin > 0 ? rawMin : 59;
-        const currency = data.priceRanges?.[0]?.currency || "USD";
-        setEvent({
-          title: data.name,
-          artist: data._embedded?.attractions?.[0]?.name || "Various Artists",
-          date: data.dates.start.localDate,
-          time: data.dates.start.localTime,
-          venue: data._embedded?.venues?.[0]?.name || "TBA",
-          city: data._embedded?.venues?.[0]?.city?.name || "",
-          image: data.images?.[0]?.url,
-          sourcePrice: rawMin > 0 ? `${currency} ${rawMin} - ${rawMax}` : "See Ticketmaster",
-          tickets: [
-            { id: "floor", name: "Floor", price: floorPrice, color: "bg-red-600" },
-            { id: "lower", name: "Lower Level", price: lowerPrice, color: "bg-blue-600" },
-            { id: "upper", name: "Upper Level", price: upperPrice, color: "bg-green-600" },
-          ],
-        });
+        if (data.error) { setLoading(false); return; }
+        setEvent(data);
+        sessionStorage.setItem(`event-${id}`, JSON.stringify(data));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -53,8 +41,6 @@ export default function EventDetail() {
 
   const currentSection = view !== "sections" ? event.tickets.find(t => t.id === view) : null;
   const selectedInSection = currentSection ? selected.filter(s => s.startsWith(currentSection.id)) : [];
-  const sectionPrices = {};
-  event.tickets.forEach(t => { sectionPrices[t.id] = t.price; });
   
   const total = selected.reduce((sum, s) => {
     const section = event.tickets.find(t => s.startsWith(t.id));
@@ -82,7 +68,7 @@ export default function EventDetail() {
         {event.time && ` • ${event.time.slice(0, 5)}`}
       </p>
       <p className="text-gray-500">{event.venue}{event.city ? `, ${event.city}` : ""}</p>
-      <p className="text-sm text-gray-400 mt-1">Ticketmaster: {event.sourcePrice}</p>
+      <p className="text-sm text-gray-400 mt-1">{event.sourcePrice}</p>
 
       {view === "sections" ? (
         <div className="mt-8">
@@ -107,9 +93,7 @@ export default function EventDetail() {
           <h2 className="text-xl font-bold mb-1">{currentSection.name}</h2>
           <p className="text-2xl font-bold">${currentSection.price}<span className="text-sm text-gray-400">/seat</span></p>
           <p className="text-gray-400 text-sm mt-2 mb-6">Tap seats to select. {selectedInSection.length} selected — ${selectedInSection.length * currentSection.price}</p>
-          
           <div className="mb-8 text-center text-gray-500 text-sm border border-gray-700 py-3 rounded-lg">🎤 STAGE</div>
-          
           <div className="space-y-2">
             {ROWS.map(row => (
               <div key={row} className="flex items-center gap-2">
@@ -119,14 +103,7 @@ export default function EventDetail() {
                     const key = `${currentSection.id}-${row}${seat}`;
                     const isSelected = selected.includes(key);
                     return (
-                      <button
-                        key={seat}
-                        onClick={() => toggleSeat(row, seat)}
-                        className={`w-7 h-7 rounded-t-lg text-[10px] font-bold transition ${
-                          isSelected ? `${currentSection.color} text-white` : "bg-gray-800 hover:bg-gray-600 text-gray-400"
-                        }`}
-                        title={`${currentSection.name} Row ${row} Seat ${seat} - $${currentSection.price}`}
-                      >
+                      <button key={seat} onClick={() => toggleSeat(row, seat)} className={`w-7 h-7 rounded-t-lg text-[10px] font-bold transition ${isSelected ? `${currentSection.color} text-white` : "bg-gray-800 hover:bg-gray-600 text-gray-400"}`} title={`${currentSection.name} Row ${row} Seat ${seat} - $${currentSection.price}`}>
                         {seat}
                       </button>
                     );
