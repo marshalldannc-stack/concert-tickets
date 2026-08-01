@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function ChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -26,7 +26,6 @@ export default function ChatPage() {
     if (!text.trim()) return;
     setMessages([...messages, { text, from: "user" }]);
     setText("");
-    // Auto-reply after 1 second
     setTimeout(() => {
       setMessages(prev => [...prev, { text: "Thanks! We'll check availability and get back to you with the best price shortly.", from: "admin" }]);
     }, 1000);
@@ -51,5 +50,13 @@ export default function ChatPage() {
         <button onClick={send} className="bg-white text-black px-5 py-2 rounded-full font-bold text-sm">Send</button>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-20 text-gray-400">Loading chat...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }
