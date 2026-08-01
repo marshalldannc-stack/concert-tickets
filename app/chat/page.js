@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 
 function ChatContent() {
@@ -7,21 +7,7 @@ function ChatContent() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [userId] = useState(() => localStorage.getItem("chatUserId") || "user_" + Date.now());
-
-  useEffect(() => {
-    localStorage.setItem("chatUserId", userId);
-    const event = searchParams.get("event");
-    const date = searchParams.get("date");
-    const venue = searchParams.get("venue");
-    const city = searchParams.get("city");
-    if (event) {
-      let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}`;
-      sendMessage(msg, true);
-    }
-    loadMessages();
-    const interval = setInterval(loadMessages, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const sentRef = useRef(false);
 
   const loadMessages = async () => {
     const res = await fetch(`/api/chat?userId=${userId}`);
@@ -29,19 +15,36 @@ function ChatContent() {
     setMessages(data);
   };
 
-  const sendMessage = async (msg, skipLoad) => {
+  const sendMessage = async (msg) => {
     await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, text: msg || text, isAdmin: false }),
+      body: JSON.stringify({ userId, text: msg, isAdmin: false }),
     });
-    if (!skipLoad) loadMessages();
-    setText("");
+    loadMessages();
   };
+
+  useEffect(() => {
+    localStorage.setItem("chatUserId", userId);
+    const event = searchParams.get("event");
+    const date = searchParams.get("date");
+    const venue = searchParams.get("venue");
+    const city = searchParams.get("city");
+
+    if (event && !sentRef.current) {
+      sentRef.current = true;
+      let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices for this event.`;
+      sendMessage(msg);
+    }
+    loadMessages();
+    const interval = setInterval(loadMessages, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const send = () => {
     if (!text.trim()) return;
     sendMessage(text);
+    setText("");
   };
 
   return (
