@@ -8,116 +8,94 @@ function ChatContent() {
   const { data: session } = useSession();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
-  const [userId, setUserId] = useState("");
-  const [lastActivity, setLastActivity] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const chatEndRef = useRef(null);
+  const autoSent = useRef(false);
 
   useEffect(() => {
-    if (session?.user?.email) {
-      setUserId(session.user.email);
-      localStorage.setItem("chatUserId", session.user.email);
-    } else {
-      const saved = localStorage.getItem("chatUserId") || "user_" + Date.now();
-      setUserId(saved);
-      localStorage.setItem("chatUserId", saved);
-    }
+    const id = session?.user?.email || localStorage.getItem("chatUserId") || "guest_" + Date.now();
+    localStorage.setItem("chatUserId", id);
+    setUserId(id);
   }, [session]);
 
-  const loadMessages = async () => {
-    if (!userId) return;
-    try {
-      const res = await fetch(`/api/chat?userId=${userId}`);
-      const data = await res.json();
-      if (data.length > 0) {
-        setMessages(data);
-        localStorage.setItem(`chat-cache-${userId}`, JSON.stringify(data));
-        const lastAdmin = [...data].reverse().find(m => m.isAdmin);
-        if (lastAdmin) setLastActivity(lastAdmin.createdAt);
-      }
-    } catch {}
-  };
-
-  const sendMessage = async (msg, image = null) => {
-    if (!userId || (!msg.trim() && !image)) return;
-    const tempMsg = { id: "temp", userId, text: msg, image, isAdmin: false, createdAt: new Date().toISOString() };
-    setMessages(prev => [...prev, tempMsg]);
-    await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, text: msg, image, isAdmin: false }),
-    });
-    loadMessages();
-  };
-
-  const handleImage = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setUploading(true);
-    const reader = new FileReader();
-    reader.onload = async () => {
-      await sendMessage("", reader.result);
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
-  };
-
   useEffect(() => {
     if (!userId) return;
-    const cached = localStorage.getItem(`chat-cache-${userId}`);
-    if (cached) {
-      setMessages(JSON.parse(cached));
-      const data = JSON.parse(cached);
-      const lastAdmin = [...data].reverse().find(m => m.isAdmin);
-      if (lastAdmin) setLastActivity(lastAdmin.createdAt);
-    }
-    loadMessages();
-    const interval = setInterval(loadMessages, 3000);
+    fetch(`/api/chat?userId=${userId}`)
+      .then(r => r.json())
+      .then(data => {
+        setMessages(data);
+        setLoading(false);
+      });
+    const interval = setInterval(() => {
+      fetch(`/api/chat?userId=${userId}`)
+        .then(r => r.json())
+        .then(data => setMessages(data));
+    }, 5000);
     return () => clearInterval(interval);
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
     const event = searchParams.get("event");
-    if (event && userId) {
-      const key = `auto-msg-${event}`;
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "sent");
-        const date = searchParams.get("date");
-        const venue = searchParams.get("venue");
-        const city = searchParams.get("city");
-        setTimeout(() => {
-          let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices.`;
-          sendMessage(msg);
-        }, 500);
-      }
+    if (event && !autoSent.current) {
+      autoSent.current = true;
+      const date = searchParams.get("date") || "";
+      const venue = searchParams.get("venue") || "";
+      const city = searchParams.get("city") || "";
+      const msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date}\nVenue: ${venue}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices.`;
+      fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, text: msg, isAdmin: false }),
+      });
     }
-  }, [searchParams, userId]);
+  }, [userId, searchParams]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = () => {
-    if (!text.trim()) return;
-    sendMessage(text);
+  const send = async () => {
+    if (!text.trim() || !userId) return;
+    const msg = text;
     setText("");
+    setMessages(prev => [...prev, { id: "tmp", userId, text: msg, isAdmin: false, createdAt: new Date().toISOString() }]);
+    await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, text: msg, isAdmin: false }),
+    });
+    const res = await fetch(`/api/chat?userId=${userId}`);
+    const data = await res.json();
+    setMessages(data);
   };
+
+  const handleImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !userId) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const img = reader.result;
+      setMessages(prev => [...prev, { id: "tmp", userId, image: img, isAdmin: false, createdAt: new Date().toISOString() }]);
+      await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, text: "", image: img, isAdmin: false }),
+      });
+      const res = await fetch(`/api/chat?userId=${userId}`);
+      const data = await res.json();
+      setMessages(data);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (loading) return <p className="text-center mt-20 text-gray-400">Loading chat...</p>;
 
   return (
     <div className="max-w-md mx-auto mt-10">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Customer Support</h1>
-        <span className="flex items-center gap-1 text-xs">
-          <span className={`w-2 h-2 rounded-full ${lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 300000 ? "bg-green-500" : "bg-gray-500"}`}></span>
-          <span className="text-gray-400">{lastActivity && (Date.now() - new Date(lastActivity).getTime()) < 300000 ? "Online" : "Offline"}</span>
-        </span>
-      </div>
-      <p className="text-gray-400 mb-4 text-sm">Chat with us — we reply fast!</p>
-      {!session && (
-        <p className="text-yellow-400 text-xs mb-4">
-          ⚠️ <a href="/login" className="underline">Login</a> to save your chat history permanently.
-        </p>
-      )}
+      <h1 className="text-2xl font-bold mb-4">Customer Support</h1>
+      <p className="text-gray-400 mb-4 text-sm">We reply within minutes. For urgent requests, stay on this page.</p>
       <div className="border border-gray-700 rounded-xl p-4 h-80 overflow-y-auto mb-4 bg-gray-900">
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 ${m.isAdmin ? "text-left" : "text-right"}`}>
@@ -131,14 +109,14 @@ function ChatContent() {
           </div>
         ))}
         {messages.length === 0 && (
-          <p className="text-gray-500 text-sm text-center mt-20">Start a conversation — we're here to help!</p>
+          <p className="text-gray-500 text-sm text-center mt-20">No messages yet. Send us a message!</p>
         )}
         <div ref={chatEndRef} />
       </div>
       <div className="flex gap-2 items-center">
         <label className="bg-gray-800 border border-gray-700 rounded-full px-3 py-2 cursor-pointer text-gray-400 hover:text-white text-sm">
           📷
-          <input type="file" accept="image/*" onChange={handleImage} className="hidden" disabled={uploading} />
+          <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
         </label>
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-white text-sm" placeholder="Type a message..." />
         <button onClick={send} className="bg-white text-black px-5 py-2 rounded-full font-bold text-sm">Send</button>
@@ -149,7 +127,7 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="text-center mt-20 text-gray-400">Loading chat...</div>}>
+    <Suspense fallback={<div className="text-center mt-20 text-gray-400">Loading...</div>}>
       <ChatContent />
     </Suspense>
   );
