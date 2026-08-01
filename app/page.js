@@ -47,12 +47,13 @@ function HomeContent() {
     try {
       const r = await fetch(url);
       const all = await r.json();
-      const sug = all.slice(0, 5).map(e => e.title).concat(
-        all.slice(0, 3).map(e => e.artist).filter(Boolean),
-        all.slice(0, 3).map(e => e.venue).filter(Boolean),
-        all.slice(0, 3).map(e => e.city).filter(Boolean)
-      );
-      setSuggestions([...new Set(sug)].slice(0, 8));
+      const sug = [...new Set([
+        ...all.slice(0, 5).map(e => e.title),
+        ...all.slice(0, 3).map(e => e.artist).filter(Boolean),
+        ...all.slice(0, 3).map(e => e.venue).filter(Boolean),
+        ...all.slice(0, 3).map(e => e.city).filter(Boolean),
+      ])].slice(0, 8);
+      setSuggestions(sug);
     } catch { setSuggestions([]); }
   };
 
