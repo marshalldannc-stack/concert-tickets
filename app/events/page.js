@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function EventsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [events, setEvents] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [loading, setLoading] = useState(true);
 
   const fetchEvents = async (keyword = "") => {
@@ -18,10 +21,11 @@ export default function EventsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => { fetchEvents(search); }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    router.push(`/events?q=${encodeURIComponent(search)}`);
     fetchEvents(search);
   };
 
@@ -74,7 +78,7 @@ export default function EventsPage() {
 
       {!loading && search && (
         <section>
-          <h2 className="text-xl font-bold mb-4">Results</h2>
+          <h2 className="text-xl font-bold mb-4">Results for "{search}"</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {events.map(e => <EventCard key={e.id} event={e} />)}
           </div>
