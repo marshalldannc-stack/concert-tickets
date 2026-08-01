@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -11,6 +11,9 @@ function HomeContent() {
   const [userCity, setUserCity] = useState("");
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("searchHistory") || "[]");
@@ -38,6 +41,21 @@ function HomeContent() {
     setLoading(false);
   };
 
+  const fetchSuggestions = async (keyword) => {
+    if (keyword.length < 2) { setSuggestions([]); return; }
+    let url = `/api/search?keyword=${encodeURIComponent(keyword)}`;
+    try {
+      const r = await fetch(url);
+      const all = await r.json();
+      const sug = all.slice(0, 5).map(e => e.title).concat(
+        all.slice(0, 3).map(e => e.artist).filter(Boolean),
+        all.slice(0, 3).map(e => e.venue).filter(Boolean),
+        all.slice(0, 3).map(e => e.city).filter(Boolean)
+      );
+      setSuggestions([...new Set(sug)].slice(0, 8));
+    } catch { setSuggestions([]); }
+  };
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -57,6 +75,15 @@ function HomeContent() {
     addToHistory(search);
     router.push(`/?q=${encodeURIComponent(search)}`);
     fetchEvents(search, userCity);
+    setShowSuggestions(false);
+  };
+
+  const handleSuggestionClick = (term) => {
+    setSearch(term);
+    addToHistory(term);
+    router.push(`/?q=${encodeURIComponent(term)}`);
+    fetchEvents(term, userCity);
+    setShowSuggestions(false);
   };
 
   const now = new Date();
@@ -73,14 +100,32 @@ function HomeContent() {
       <div className="text-center mb-12">
         <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Live Events</h1>
         <p className="text-gray-400 mb-6">Concerts from Ticketmaster & Eventbrite</p>
-        <form onSubmit={handleSearch} className="flex gap-2 max-w-lg mx-auto mb-3">
-          <input value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 bg-gray-800 border border-gray-600 rounded-full px-6 py-3 text-white" placeholder="Search artists, venues, cities..." />
-          <button type="submit" className="bg-white text-black px-6 py-3 rounded-full font-bold">Search</button>
-        </form>
+        <div className="relative max-w-lg mx-auto">
+          <form onSubmit={handleSearch} className="flex gap-2 mb-3">
+            <input ref={inputRef} value={search}
+              onChange={(e) => { setSearch(e.target.value); fetchSuggestions(e.target.value); setShowSuggestions(true); }}
+              onFocus={() => { if (suggestions.length > 0 || search.length >= 2) setShowSuggestions(true); }}
+              className="flex-1 bg-gray-800 border border-gray-600 rounded-full px-6 py-3 text-white"
+              placeholder="Search artists, venues, cities..." />
+            <button type="submit" className="bg-white text-black px-6 py-3 rounded-full font-bold">Search</button>
+          </form>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 bg-gray-800 border border-gray-600 rounded-xl mt-1 z-20 overflow-hidden">
+              {suggestions.map((s, i) => (
+                <button key={i} onClick={() => handleSuggestionClick(s)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-700 text-sm text-gray-200 border-b border-gray-700 last:border-0 flex items-center gap-2">
+                  🔍 {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {history.length > 0 && !search && (
-          <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+          <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto mt-4">
             {history.map((term, i) => (
-              <button key={i} onClick={() => { setSearch(term); addToHistory(term); router.push(`/?q=${encodeURIComponent(term)}`); fetchEvents(term, userCity); }}
+              <button key={i} onClick={() => handleSuggestionClick(term)}
                 className="bg-gray-800 border border-gray-700 rounded-full px-4 py-1 text-sm text-gray-300 hover:border-white transition">
                 🕐 {term}
               </button>
