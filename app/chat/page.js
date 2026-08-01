@@ -21,23 +21,31 @@ function ChatContent() {
 
   useEffect(() => {
     if (!userId) return;
-    let active = true;
+    const cached = localStorage.getItem(`msgs-${userId}`);
+    if (cached) {
+      setMessages(JSON.parse(cached));
+      setLoading(false);
+    }
     fetch(`/api/chat?userId=${userId}`)
       .then(r => r.json())
       .then(data => {
-        if (active && data) {
+        if (data && data.length > 0) {
           setMessages(data);
-          setLoading(false);
+          localStorage.setItem(`msgs-${userId}`, JSON.stringify(data));
         }
+        setLoading(false);
       });
     const interval = setInterval(() => {
       fetch(`/api/chat?userId=${userId}`)
         .then(r => r.json())
         .then(data => {
-          if (active && data && data.length > 0) setMessages(data);
+          if (data && data.length > 0) {
+            setMessages(data);
+            localStorage.setItem(`msgs-${userId}`, JSON.stringify(data));
+          }
         });
     }, 5000);
-    return () => { active = false; clearInterval(interval); };
+    return () => clearInterval(interval);
   }, [userId]);
 
   useEffect(() => {
@@ -65,7 +73,10 @@ function ChatContent() {
     if (!text.trim() || !userId) return;
     const msg = text;
     setText("");
-    setMessages(prev => [...prev, { id: "tmp", userId, text: msg, isAdmin: false, createdAt: new Date().toISOString() }]);
+    const newMsg = { id: Date.now().toString(), userId, text: msg, isAdmin: false, createdAt: new Date().toISOString() };
+    const updated = [...messages, newMsg];
+    setMessages(updated);
+    localStorage.setItem(`msgs-${userId}`, JSON.stringify(updated));
     await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +90,10 @@ function ChatContent() {
     const reader = new FileReader();
     reader.onload = async () => {
       const img = reader.result;
-      setMessages(prev => [...prev, { id: "tmp", userId, image: img, isAdmin: false, createdAt: new Date().toISOString() }]);
+      const newMsg = { id: Date.now().toString(), userId, image: img, isAdmin: false, createdAt: new Date().toISOString() };
+      const updated = [...messages, newMsg];
+      setMessages(updated);
+      localStorage.setItem(`msgs-${userId}`, JSON.stringify(updated));
       await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
