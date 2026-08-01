@@ -11,7 +11,6 @@ function ChatContent() {
   const [userId, setUserId] = useState("");
   const [lastActivity, setLastActivity] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const sentRef = useRef(false);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -69,15 +68,18 @@ function ChatContent() {
 
   useEffect(() => {
     const event = searchParams.get("event");
-    const date = searchParams.get("date");
-    const venue = searchParams.get("venue");
-    const city = searchParams.get("city");
-    if (event && userId && !sentRef.current) {
-      sentRef.current = true;
-      setTimeout(() => {
-        let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices.`;
-        sendMessage(msg);
-      }, 500);
+    if (event && userId) {
+      const key = `auto-msg-${event}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "sent");
+        const date = searchParams.get("date");
+        const venue = searchParams.get("venue");
+        const city = searchParams.get("city");
+        setTimeout(() => {
+          let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices.`;
+          sendMessage(msg);
+        }, 500);
+      }
     }
   }, [searchParams, userId]);
 
