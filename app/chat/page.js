@@ -7,15 +7,15 @@ function ChatContent() {
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const chatEndRef = useRef(null);
-  const autoSent = useRef(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("chatMessages");
     if (saved) setMessages(JSON.parse(saved));
     
     const event = searchParams.get("event");
-    if (event && !autoSent.current) {
-      autoSent.current = true;
+    const alreadySent = sessionStorage.getItem("price-request-sent");
+    if (event && !alreadySent) {
+      sessionStorage.setItem("price-request-sent", "true");
       const date = searchParams.get("date") || "";
       const venue = searchParams.get("venue") || "";
       const city = searchParams.get("city") || "";
