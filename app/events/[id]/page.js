@@ -52,6 +52,8 @@ export default function EventDetail() {
     router.push("/cart");
   };
 
+  const chatUrl = `/chat?event=${encodeURIComponent(event.title)}&date=${event.date}&venue=${encodeURIComponent(event.venue || "")}&city=${encodeURIComponent(event.city || "")}`;
+
   return (
     <div className="max-w-3xl mx-auto">
       {event.image && <img src={event.image} alt={event.title} className="w-full h-64 object-cover rounded-xl mb-6" />}
@@ -105,7 +107,7 @@ export default function EventDetail() {
         <div className="mt-8 border border-gray-700 rounded-xl p-8 text-center">
           <p className="text-xl font-bold mb-2">Price on Request</p>
           <p className="text-gray-400 mb-6">Contact us for the best price on this event.</p>
-          <a href="/chat" className="bg-white text-black px-8 py-3 rounded-full font-bold inline-block">Request Price via Chat</a>
+          <a href={chatUrl} className="bg-white text-black px-8 py-3 rounded-full font-bold inline-block">Request Price via Chat</a>
         </div>
       )}
 
