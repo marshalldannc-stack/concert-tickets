@@ -1,10 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function HomePage() {
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [events, setEvents] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [userCity, setUserCity] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -20,20 +23,22 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    const q = searchParams.get("q") || "";
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
           const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=en`);
           const data = await res.json();
           setUserCity(data.city || "");
-          fetchEvents("", data.city || "");
-        } catch { fetchEvents(); }
-      }, () => fetchEvents());
-    } else fetchEvents();
+          fetchEvents(q, data.city || "");
+        } catch { fetchEvents(q); }
+      }, () => fetchEvents(q));
+    } else fetchEvents(q);
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
+    router.push(`/?q=${encodeURIComponent(search)}`);
     fetchEvents(search, userCity);
   };
 
@@ -91,7 +96,7 @@ export default function HomePage() {
 
       {!loading && search && (
         <section>
-          <h2 className="text-xl font-bold mb-4">Search Results</h2>
+          <h2 className="text-xl font-bold mb-4">Results for "{search}"</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {events.map(e => <EventCard key={e.id} event={e} />)}
           </div>
@@ -111,5 +116,13 @@ function EventCard({ event }) {
       <p className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {event.venue}, {event.city}</p>
       <p className="text-xs text-gray-500 mt-1 uppercase">{event.source}</p>
     </Link>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-20 text-gray-400">Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
