@@ -1,9 +1,9 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function EventsPage() {
+function EventsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [events, setEvents] = useState([]);
@@ -98,5 +98,13 @@ function EventCard({ event }) {
       <p className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {event.venue}, {event.city}</p>
       <p className="text-xs text-gray-500 mt-1 uppercase">{event.source}</p>
     </Link>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-20 text-gray-400">Loading events...</div>}>
+      <EventsContent />
+    </Suspense>
   );
 }
