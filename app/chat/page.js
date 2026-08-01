@@ -6,39 +6,52 @@ function ChatContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
+  const [userId] = useState(() => localStorage.getItem("chatUserId") || "user_" + Date.now());
 
   useEffect(() => {
+    localStorage.setItem("chatUserId", userId);
     const event = searchParams.get("event");
     const date = searchParams.get("date");
     const venue = searchParams.get("venue");
     const city = searchParams.get("city");
-
     if (event) {
-      let msg = `🎫 Price Request\nEvent: ${event}`;
-      if (date) msg += `\nDate: ${date}`;
-      if (venue) msg += `\nVenue: ${venue}${city ? `, ${city}` : ""}`;
-      msg += `\n\nI'd like to know the ticket prices for this event.`;
-      setMessages([{ text: msg, from: "user" }]);
+      let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}`;
+      sendMessage(msg, true);
     }
-  }, [searchParams]);
+    loadMessages();
+    const interval = setInterval(loadMessages, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadMessages = async () => {
+    const res = await fetch(`/api/chat?userId=${userId}`);
+    const data = await res.json();
+    setMessages(data);
+  };
+
+  const sendMessage = async (msg, skipLoad) => {
+    await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, text: msg || text, isAdmin: false }),
+    });
+    if (!skipLoad) loadMessages();
+    setText("");
+  };
 
   const send = () => {
     if (!text.trim()) return;
-    setMessages([...messages, { text, from: "user" }]);
-    setText("");
-    setTimeout(() => {
-      setMessages(prev => [...prev, { text: "Thanks! We'll check availability and get back to you with the best price shortly.", from: "admin" }]);
-    }, 1000);
+    sendMessage(text);
   };
 
   return (
     <div className="max-w-md mx-auto mt-10">
       <h1 className="text-2xl font-bold mb-4">Customer Support</h1>
-      <p className="text-gray-400 mb-4">Chat with us for ticket prices and help.</p>
+      <p className="text-gray-400 mb-4">Chat with us — we reply fast!</p>
       <div className="border border-gray-700 rounded-xl p-4 h-80 overflow-y-auto mb-4 bg-gray-900">
         {messages.map((m, i) => (
-          <div key={i} className={`mb-3 ${m.from === "user" ? "text-right" : "text-left"}`}>
-            <span className={`inline-block px-4 py-2 rounded-xl text-sm whitespace-pre-line ${m.from === "user" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-200"}`}>
+          <div key={i} className={`mb-3 ${m.isAdmin ? "text-left" : "text-right"}`}>
+            <span className={`inline-block px-4 py-2 rounded-xl text-sm whitespace-pre-line ${m.isAdmin ? "bg-gray-700 text-gray-200" : "bg-blue-600 text-white"}`}>
               {m.text}
             </span>
           </div>
