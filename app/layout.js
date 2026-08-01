@@ -1,6 +1,7 @@
 "use client";
 import { SessionProvider, useSession, signOut } from "next-auth/react";
 import { useState } from "react";
+import Link from "next/link";
 import "./globals.css";
 
 function NavBar() {
@@ -10,13 +11,13 @@ function NavBar() {
   return (
     <nav className="p-4 border-b border-gray-800">
       <div className="flex justify-between items-center">
-        <a href="/" className="text-xl font-bold">ConcertTix</a>
+        <Link href="/" className="text-xl font-bold">ConcertTix</Link>
         <button onClick={() => setOpen(!open)} className="md:hidden text-white text-2xl">☰</button>
         <div className="hidden md:flex space-x-4 text-sm items-center">
-          <a href="/events">Events</a>
-          <a href="/cart">Cart</a>
-          <a href="/orders">My Orders</a>
-          <a href="/chat">Support</a>
+          <Link href="/events">Events</Link>
+          <Link href="/cart">Cart</Link>
+          <Link href="/orders">My Orders</Link>
+          <Link href="/chat">Support</Link>
           {session ? (
             <>
               <span className="text-gray-400 text-xs">{session.user.email}</span>
@@ -24,18 +25,18 @@ function NavBar() {
             </>
           ) : (
             <>
-              <a href="/login">Login</a>
-              <a href="/signup" className="bg-white text-black px-3 py-1 rounded-full">Sign Up</a>
+              <Link href="/login">Login</Link>
+              <Link href="/signup" className="bg-white text-black px-3 py-1 rounded-full">Sign Up</Link>
             </>
           )}
         </div>
       </div>
       {open && (
         <div className="md:hidden mt-4 flex flex-col space-y-3 text-sm">
-          <a href="/events" onClick={() => setOpen(false)}>Events</a>
-          <a href="/cart" onClick={() => setOpen(false)}>Cart</a>
-          <a href="/orders" onClick={() => setOpen(false)}>My Orders</a>
-          <a href="/chat" onClick={() => setOpen(false)}>Support</a>
+          <Link href="/events" onClick={() => setOpen(false)}>Events</Link>
+          <Link href="/cart" onClick={() => setOpen(false)}>Cart</Link>
+          <Link href="/orders" onClick={() => setOpen(false)}>My Orders</Link>
+          <Link href="/chat" onClick={() => setOpen(false)}>Support</Link>
           {session ? (
             <>
               <span className="text-gray-400 text-xs">{session.user.email}</span>
@@ -43,8 +44,8 @@ function NavBar() {
             </>
           ) : (
             <>
-              <a href="/login" onClick={() => setOpen(false)}>Login</a>
-              <a href="/signup" onClick={() => setOpen(false)} className="bg-white text-black px-3 py-1 rounded-full w-fit">Sign Up</a>
+              <Link href="/login" onClick={() => setOpen(false)}>Login</Link>
+              <Link href="/signup" onClick={() => setOpen(false)} className="bg-white text-black px-3 py-1 rounded-full w-fit">Sign Up</Link>
             </>
           )}
         </div>
