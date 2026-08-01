@@ -1,5 +1,40 @@
 import { NextResponse } from "next/server";
 
+let priceCache = {};
+
+function getCached(id) {
+  const c = priceCache[id];
+  if (c && Date.now() - c.time < 3600000) return c.data;
+  return null;
+}
+
+function setCache(id, data) {
+  priceCache[id] = { data, time: Date.now() };
+}
+
+async function scrapePrice(url) {
+  try {
+    const res = await fetch("https://app.scrapingbee.com/api/v1/", {
+      method: "POST",
+      body: JSON.stringify({
+        api_key: process.env.SCRAPINGBEE_API_KEY,
+        url: url,
+        render_js: true,
+      }),
+    });
+    const html = await res.text();
+    const minMatch = html.match(/"min":(\d+\.?\d*)/);
+    const maxMatch = html.match(/"max":(\d+\.?\d*)/);
+    if (minMatch) {
+      return {
+        min: parseFloat(minMatch[1]),
+        max: maxMatch ? parseFloat(maxMatch[1]) : parseFloat(minMatch[1]),
+      };
+    }
+  } catch {}
+  return null;
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
@@ -35,13 +70,29 @@ export async function GET(request) {
       });
     }
 
+    const cached = getCached(id);
+
     const res = await fetch(`https://app.ticketmaster.com/discovery/v2/events/${id}.json?apikey=${process.env.TICKETMASTER_API_KEY || "D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk"}`);
     const data = await res.json();
     if (data.errors) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     let tickets = null;
-    const rawMin = data.priceRanges?.[0]?.min || 0;
-    const rawMax = data.priceRanges?.[0]?.max || 0;
+    let rawMin = data.priceRanges?.[0]?.min || 0;
+    let rawMax = data.priceRanges?.[0]?.max || 0;
+
+    if (rawMin === 0 && cached) {
+      rawMin = cached.min;
+      rawMax = cached.max;
+    }
+
+    if (rawMin === 0 && data.url) {
+      const scraped = await scrapePrice(data.url);
+      if (scraped) {
+        setCache(id, scraped);
+        rawMin = scraped.min;
+        rawMax = scraped.max;
+      }
+    }
 
     if (rawMin > 0) {
       tickets = [
