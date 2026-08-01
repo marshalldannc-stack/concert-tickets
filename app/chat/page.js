@@ -31,6 +31,7 @@ function ChatContent() {
       const data = await res.json();
       if (data.length > 0) {
         setMessages(data);
+        localStorage.setItem(`chat-cache-${userId}`, JSON.stringify(data));
         const lastAdmin = [...data].reverse().find(m => m.isAdmin);
         if (lastAdmin) setLastActivity(lastAdmin.createdAt);
       }
@@ -38,7 +39,9 @@ function ChatContent() {
   };
 
   const sendMessage = async (msg, image = null) => {
-    if (!userId) return;
+    if (!userId || (!msg.trim() && !image)) return;
+    const tempMsg = { id: "temp", userId, text: msg, image, isAdmin: false, createdAt: new Date().toISOString() };
+    setMessages(prev => [...prev, tempMsg]);
     await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,6 +64,13 @@ function ChatContent() {
 
   useEffect(() => {
     if (!userId) return;
+    const cached = localStorage.getItem(`chat-cache-${userId}`);
+    if (cached) {
+      setMessages(JSON.parse(cached));
+      const data = JSON.parse(cached);
+      const lastAdmin = [...data].reverse().find(m => m.isAdmin);
+      if (lastAdmin) setLastActivity(lastAdmin.createdAt);
+    }
     loadMessages();
     const interval = setInterval(loadMessages, 3000);
     return () => clearInterval(interval);
