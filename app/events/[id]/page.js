@@ -42,11 +42,11 @@ export default function EventDetail() {
   const currentSection = view !== "sections" ? event.tickets.find(t => t.id === view) : null;
   const selectedInSection = currentSection ? selected.filter(s => s.startsWith(currentSection.id)) : [];
   
-  const total = selected.reduce((sum, s) => {
-    const section = event.tickets.find(t => s.startsWith(t.id));
+const total = selected.reduce((sum, s) => {
+    const sectionId = s.split("-")[0];
+    const section = event.tickets.find(t => t.id === sectionId);
     return sum + (section ? section.price : 0);
   }, 0);
-
   const checkout = () => {
     if (selected.length === 0) return alert("Select at least one seat");
     const items = event.tickets.filter(t => selected.some(s => s.startsWith(t.id))).map(t => ({
