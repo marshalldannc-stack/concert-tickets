@@ -94,8 +94,9 @@ function ChatContent() {
 
   return (
     <div className="max-w-md mx-auto mt-10">
-      <h1 className="text-2xl font-bold mb-4">Customer Support</h1>
-      <p className="text-gray-400 mb-4 text-sm">We reply within minutes. For urgent requests, stay on this page.</p>
+      <h1 className="text-2xl font-bold mb-2">Customer Support</h1>
+      <p className="text-gray-400 mb-1 text-sm">📞 Urgent? Call/Text: <span className="text-white font-bold">+1 (251) 829-7805</span></p>
+      <p className="text-gray-400 mb-4 text-sm">We reply within minutes.</p>
       <div className="border border-gray-700 rounded-xl p-4 h-80 overflow-y-auto mb-4 bg-gray-900">
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 ${m.isAdmin ? "text-left" : "text-right"}`}>
