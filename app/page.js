@@ -11,17 +11,18 @@ function HomeContent() {
   const [userCity, setUserCity] = useState("");
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("searchHistory") || "[]");
     setHistory(saved);
+    const q = searchParams.get("q") || "";
+    if (q) fetchEvents(q);
   }, []);
 
   const addToHistory = (term) => {
     if (!term.trim()) return;
     let h = JSON.parse(localStorage.getItem("searchHistory") || "[]");
-    h = [term, ...h.filter(t => t !== term)].slice(0, 10);
+    h = [term, ...h.filter(t => t !== term)].slice(0, 8);
     localStorage.setItem("searchHistory", JSON.stringify(h));
     setHistory(h);
   };
@@ -38,17 +39,16 @@ function HomeContent() {
   };
 
   useEffect(() => {
-    const q = searchParams.get("q") || "";
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         try {
           const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&localityLanguage=en`);
           const data = await res.json();
           setUserCity(data.city || "");
-          fetchEvents(q, data.city || "");
-        } catch { fetchEvents(q); }
-      }, () => fetchEvents(q));
-    } else fetchEvents(q);
+          if (!searchParams.get("q")) fetchEvents("", data.city || "");
+        } catch { if (!searchParams.get("q")) fetchEvents(); }
+      }, () => { if (!searchParams.get("q")) fetchEvents(); });
+    } else { if (!searchParams.get("q")) fetchEvents(); }
   }, []);
 
   const handleSearch = (e) => {
@@ -57,15 +57,6 @@ function HomeContent() {
     addToHistory(search);
     router.push(`/?q=${encodeURIComponent(search)}`);
     fetchEvents(search, userCity);
-    setShowHistory(false);
-  };
-
-  const handleHistoryClick = (term) => {
-    setSearch(term);
-    addToHistory(term);
-    router.push(`/?q=${encodeURIComponent(term)}`);
-    fetchEvents(term, userCity);
-    setShowHistory(false);
   };
 
   const now = new Date();
@@ -82,31 +73,21 @@ function HomeContent() {
       <div className="text-center mb-12">
         <h1 className="text-3xl md:text-5xl font-bold mb-4">Discover Live Events</h1>
         <p className="text-gray-400 mb-6">Concerts from Ticketmaster & Eventbrite</p>
-        <div className="relative max-w-lg mx-auto">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onFocus={() => setShowHistory(true)}
-              className="flex-1 bg-gray-800 border border-gray-600 rounded-full px-6 py-3 text-white"
-              placeholder="Search artists, venues, cities..."
-            />
-            <button type="submit" className="bg-white text-black px-6 py-3 rounded-full font-bold">Search</button>
-          </form>
-          {showHistory && history.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden z-10">
-              <div className="flex justify-between items-center px-4 py-2 border-b border-gray-700">
-                <p className="text-xs text-gray-400">Recent Searches</p>
-                <button onClick={() => { localStorage.removeItem("searchHistory"); setHistory([]); }} className="text-xs text-red-400">Clear</button>
-              </div>
-              {history.map((term, i) => (
-                <button key={i} onClick={() => handleHistoryClick(term)} className="w-full text-left px-4 py-2 hover:bg-gray-700 text-sm text-gray-300 flex items-center gap-2">
-                  🕐 {term}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <form onSubmit={handleSearch} className="flex gap-2 max-w-lg mx-auto mb-3">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 bg-gray-800 border border-gray-600 rounded-full px-6 py-3 text-white" placeholder="Search artists, venues, cities..." />
+          <button type="submit" className="bg-white text-black px-6 py-3 rounded-full font-bold">Search</button>
+        </form>
+        {history.length > 0 && !search && (
+          <div className="flex flex-wrap justify-center gap-2 max-w-lg mx-auto">
+            {history.map((term, i) => (
+              <button key={i} onClick={() => { setSearch(term); addToHistory(term); router.push(`/?q=${encodeURIComponent(term)}`); fetchEvents(term, userCity); }}
+                className="bg-gray-800 border border-gray-700 rounded-full px-4 py-1 text-sm text-gray-300 hover:border-white transition">
+                🕐 {term}
+              </button>
+            ))}
+            <button onClick={() => { localStorage.removeItem("searchHistory"); setHistory([]); }} className="text-xs text-red-400 underline">clear</button>
+          </div>
+        )}
       </div>
 
       {loading && <p className="text-gray-400 text-center">Loading events...</p>}
