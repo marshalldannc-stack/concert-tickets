@@ -12,8 +12,7 @@ export default function HomePage() {
     setLoading(true);
     let all = [];
 
-    // Ticketmaster
-    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk&classificationName=music&countryCode=US&size=12`;
+    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk&classificationName=music&countryCode=US&size=30`;
     if (keyword) tmUrl += `&keyword=${keyword}`;
     if (city) tmUrl += `&city=${city}`;
     try {
@@ -27,16 +26,15 @@ export default function HomePage() {
           date: e.dates.start.localDate,
           venue: e._embedded?.venues?.[0]?.name || "TBA",
           city: e._embedded?.venues?.[0]?.city?.name || "TBA",
-          image: e.images?.[0]?.url || "🎵",
+          image: e.images?.[0]?.url || "",
           source: "ticketmaster",
         })));
       }
     } catch {}
 
-    // Eventbrite
-    let ebUrl = `https://www.eventbriteapi.com/v3/events/search/?token=XZDWD3LKMXFCO45JIQO3&categories=103&location.address=United+States&expand=venue&sort_by=date`;
-    if (keyword) ebUrl += `&q=${keyword}`;
     try {
+      let ebUrl = `https://www.eventbriteapi.com/v3/events/search/?token=XZDWD3LKMXFCO45JIQO3&categories=103&expand=venue&sort_by=date`;
+      if (keyword) ebUrl += `&q=${keyword}`;
       const r = await fetch(ebUrl);
       const d = await r.json();
       if (d.events) {
@@ -47,13 +45,14 @@ export default function HomePage() {
           date: e.start.local?.split("T")[0] || "TBA",
           venue: e.venue?.name || "TBA",
           city: e.venue?.city || "TBA",
-          image: e.logo?.url || "🎵",
+          image: e.logo?.url || "",
           source: "eventbrite",
         })));
       }
     } catch {}
 
-    setEvents(all.sort((a, b) => new Date(a.date) - new Date(b.date)));
+    all.sort((a, b) => new Date(a.date) - new Date(b.date));
+    setEvents(all);
     setLoading(false);
   };
 
@@ -75,6 +74,15 @@ export default function HomePage() {
     fetchEvents(search, userCity);
   };
 
+  const now = new Date();
+  const thisWeek = events.filter(e => {
+    const d = new Date(e.date);
+    const weekEnd = new Date(now.getTime() + 7 * 86400000);
+    return d >= now && d <= weekEnd;
+  });
+  const later = events.filter(e => new Date(e.date) > new Date(now.getTime() + 7 * 86400000));
+  const trending = events.slice(0, 6);
+
   return (
     <div>
       <div className="text-center mb-12">
@@ -86,22 +94,62 @@ export default function HomePage() {
         </form>
       </div>
 
-      {userCity && <h2 className="text-xl font-bold mb-4">📍 Events near {userCity}</h2>}
       {loading && <p className="text-gray-400 text-center">Loading events...</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {events.map(e => (
-          <Link key={e.id} href={`/events/${e.id}`} className="border border-gray-700 rounded-xl p-4 hover:border-white transition">
-            <img src={e.image} alt={e.title} className="w-full h-40 object-cover rounded-lg mb-3" onError={(el) => el.target.style.display = 'none'} />
-            <div className="text-4xl mb-3">🎵</div>
-            <h3 className="font-bold text-lg">{e.title}</h3>
-            <p className="text-gray-400 text-sm">{e.artist}</p>
-            <p className="text-gray-500 text-xs">{new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {e.venue}, {e.city}</p>
-            <p className="text-xs text-gray-500 mt-1 uppercase">{e.source}</p>
-          </Link>
-        ))}
-      </div>
-      {!loading && events.length === 0 && <p className="text-gray-400 text-center">No events found.</p>}
+      {!loading && !search && (
+        <>
+          {userCity && <h2 className="text-xl font-bold mb-4">📍 Events near {userCity}</h2>}
+
+          {trending.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">🔥 Trending Now</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {trending.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+
+          {thisWeek.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">📅 Happening This Week</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {thisWeek.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+
+          {later.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">🗓️ Upcoming Shows</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {later.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {!loading && search && (
+        <section>
+          <h2 className="text-xl font-bold mb-4">Search Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {events.map(e => <EventCard key={e.id} event={e} />)}
+          </div>
+          {events.length === 0 && <p className="text-gray-400 text-center">No events found.</p>}
+        </section>
+      )}
     </div>
+  );
+}
+
+function EventCard({ event }) {
+  return (
+    <Link href={`/events/${event.id}`} className="border border-gray-700 rounded-xl p-4 hover:border-white transition">
+      {event.image ? <img src={event.image} alt={event.title} className="w-full h-40 object-cover rounded-lg mb-3" /> : <div className="w-full h-40 bg-gray-800 rounded-lg mb-3 flex items-center justify-center text-4xl">🎵</div>}
+      <h3 className="font-bold text-lg">{event.title}</h3>
+      <p className="text-gray-400 text-sm">{event.artist}</p>
+      <p className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {event.venue}, {event.city}</p>
+      <p className="text-xs text-gray-500 mt-1 uppercase">{event.source}</p>
+    </Link>
   );
 }

@@ -11,8 +11,7 @@ export default function EventsPage() {
     setLoading(true);
     let all = [];
 
-    // Ticketmaster
-    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk&classificationName=music&countryCode=US&size=20`;
+    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk&classificationName=music&countryCode=US&size=30`;
     if (keyword) tmUrl += `&keyword=${keyword}`;
     try {
       const r = await fetch(tmUrl);
@@ -25,13 +24,12 @@ export default function EventsPage() {
           date: e.dates.start.localDate,
           venue: e._embedded?.venues?.[0]?.name || "TBA",
           city: e._embedded?.venues?.[0]?.city?.name || "TBA",
-          image: e.images?.[0]?.url || "🎵",
+          image: e.images?.[0]?.url || "",
           source: "ticketmaster",
         })));
       }
     } catch {}
 
-    // Eventbrite
     try {
       let ebUrl = `https://www.eventbriteapi.com/v3/events/search/?token=XZDWD3LKMXFCO45JIQO3&categories=103&expand=venue&sort_by=date`;
       if (keyword) ebUrl += `&q=${keyword}`;
@@ -45,7 +43,7 @@ export default function EventsPage() {
           date: e.start.local?.split("T")[0] || "TBA",
           venue: e.venue?.name || "TBA",
           city: e.venue?.city || "TBA",
-          image: e.logo?.url || "🎵",
+          image: e.logo?.url || "",
           source: "eventbrite",
         })));
       }
@@ -62,9 +60,17 @@ export default function EventsPage() {
     fetchEvents(search);
   };
 
+  const now = new Date();
+  const thisWeek = events.filter(e => {
+    const d = new Date(e.date);
+    return d >= now && d <= new Date(now.getTime() + 7 * 86400000);
+  });
+  const later = events.filter(e => new Date(e.date) > new Date(now.getTime() + 7 * 86400000));
+  const trending = events.slice(0, 6);
+
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Upcoming Events</h1>
+      <h1 className="text-2xl font-bold mb-4">All Events</h1>
       <form onSubmit={handleSearch} className="flex gap-2 max-w-lg mb-6">
         <input value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-white" placeholder="Search artists, venues, cities..." />
         <button type="submit" className="bg-white text-black px-4 py-2 rounded-full font-bold">Search</button>
@@ -72,18 +78,56 @@ export default function EventsPage() {
 
       {loading && <p className="text-gray-400 text-center">Loading events...</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {events.map(e => (
-          <Link key={e.id} href={`/events/${e.id}`} className="border border-gray-700 rounded-xl p-4 hover:border-white transition">
-            <div className="text-4xl mb-3">🎵</div>
-            <h3 className="font-bold text-lg">{e.title}</h3>
-            <p className="text-gray-400 text-sm">{e.artist}</p>
-            <p className="text-gray-500 text-xs">{new Date(e.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {e.venue}, {e.city}</p>
-            <p className="text-xs text-gray-500 mt-1 uppercase">{e.source}</p>
-          </Link>
-        ))}
-      </div>
-      {!loading && events.length === 0 && <p className="text-gray-400 text-center">No events found.</p>}
+      {!loading && !search && (
+        <>
+          {trending.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">🔥 Trending</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {trending.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+          {thisWeek.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">📅 This Week</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {thisWeek.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+          {later.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-xl font-bold mb-4">🗓️ Upcoming</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {later.map(e => <EventCard key={e.id} event={e} />)}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {!loading && search && (
+        <section>
+          <h2 className="text-xl font-bold mb-4">Results</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {events.map(e => <EventCard key={e.id} event={e} />)}
+          </div>
+          {events.length === 0 && <p className="text-gray-400">Nothing found.</p>}
+        </section>
+      )}
     </div>
+  );
+}
+
+function EventCard({ event }) {
+  return (
+    <Link href={`/events/${event.id}`} className="border border-gray-700 rounded-xl p-4 hover:border-white transition">
+      {event.image ? <img src={event.image} alt={event.title} className="w-full h-40 object-cover rounded-lg mb-3" /> : <div className="w-full h-40 bg-gray-800 rounded-lg mb-3 flex items-center justify-center text-4xl">🎵</div>}
+      <h3 className="font-bold text-lg">{event.title}</h3>
+      <p className="text-gray-400 text-sm">{event.artist}</p>
+      <p className="text-gray-500 text-xs">{new Date(event.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} • {event.venue}, {event.city}</p>
+      <p className="text-xs text-gray-500 mt-1 uppercase">{event.source}</p>
+    </Link>
   );
 }
