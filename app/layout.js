@@ -17,7 +17,6 @@ function NavBar() {
           <Link href="/events">Events</Link>
           <Link href="/cart">Cart</Link>
           <Link href="/orders">My Orders</Link>
-          <Link href="/chat">Support</Link>
           {session ? (
             <>
               <span className="text-gray-400 text-xs">{session.user.email}</span>
@@ -36,7 +35,6 @@ function NavBar() {
           <Link href="/events" onClick={() => setOpen(false)}>Events</Link>
           <Link href="/cart" onClick={() => setOpen(false)}>Cart</Link>
           <Link href="/orders" onClick={() => setOpen(false)}>My Orders</Link>
-          <Link href="/chat" onClick={() => setOpen(false)}>Support</Link>
           {session ? (
             <>
               <span className="text-gray-400 text-xs">{session.user.email}</span>
