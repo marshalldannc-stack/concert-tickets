@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect } from "react";
 
@@ -28,6 +27,11 @@ export default function AdminPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: activeUser, text: reply, isAdmin: true }),
+    });
+    await fetch("/api/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_email: activeUser, reply_text: reply }),
     });
     setReply("");
     loadChats();
@@ -59,7 +63,7 @@ export default function AdminPage() {
           {userIds.map(uid => (
             <button key={uid} onClick={() => setActiveUser(uid)}
               className={`w-full text-left p-2 rounded-lg mb-1 text-xs ${activeUser === uid ? "bg-blue-600" : "hover:bg-gray-800"}`}>
-              User {uid.slice(-6)}
+              {uid.includes("@") ? uid : `User ${uid.slice(-6)}`}
             </button>
           ))}
         </div>
@@ -70,9 +74,13 @@ export default function AdminPage() {
               <div className="h-80 overflow-y-auto mb-4 bg-gray-900 rounded-lg p-3">
                 {(conversations[activeUser] || []).map((m, i) => (
                   <div key={i} className={`mb-2 ${m.isAdmin ? "text-left" : "text-right"}`}>
-                    <span className={`inline-block px-3 py-1 rounded-xl text-sm whitespace-pre-line ${m.isAdmin ? "bg-gray-700" : "bg-blue-600"}`}>
-                      {m.text}
-                    </span>
+                    {m.image ? (
+                      <img src={m.image} className="max-w-[200px] rounded-xl inline-block" />
+                    ) : (
+                      <span className={`inline-block px-3 py-1 rounded-xl text-sm whitespace-pre-line ${m.isAdmin ? "bg-gray-700" : "bg-blue-600"}`}>
+                        {m.text}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
