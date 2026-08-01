@@ -12,9 +12,23 @@ export async function GET(request) {
 
     const rawMin = data.priceRanges?.[0]?.min || 0;
     const rawMax = data.priceRanges?.[0]?.max || 0;
-    const floorPrice = rawMax > 0 ? rawMax + 5 : 204;
-    const lowerPrice = rawMax > 0 && rawMin > 0 ? Math.round((rawMin + rawMax) / 2) + 5 : 104;
-    const upperPrice = rawMin > 0 ? rawMin + 5 : 64;
+    const currency = data.priceRanges?.[0]?.currency || "USD";
+
+    let tickets = [];
+    if (rawMin > 0 && rawMax > 0 && rawMin === rawMax) {
+      tickets = [{ id: "general", name: "General Admission", price: rawMin + 5, color: "bg-blue-600" }];
+    } else if (rawMin > 0 && rawMax > 0) {
+      tickets = [
+        { id: "floor", name: "Floor", price: rawMax + 5, color: "bg-red-600" },
+        { id: "lower", name: "Lower Level", price: Math.round((rawMin + rawMax) / 2) + 5, color: "bg-blue-600" },
+        { id: "upper", name: "Upper Level", price: rawMin + 5, color: "bg-green-600" },
+      ];
+    } else {
+      tickets = [
+        { id: "general", name: "General Admission", price: 99, color: "bg-blue-600" },
+        { id: "vip", name: "VIP", price: 199, color: "bg-red-600" },
+      ];
+    }
 
     return NextResponse.json({
       title: data.name,
@@ -24,12 +38,8 @@ export async function GET(request) {
       venue: data._embedded?.venues?.[0]?.name || "TBA",
       city: data._embedded?.venues?.[0]?.city?.name || "",
       image: data.images?.[0]?.url,
-      sourcePrice: rawMin > 0 ? `Starting at $${rawMin} on Ticketmaster` : "Check Ticketmaster for pricing",
-      tickets: [
-        { id: "floor", name: "Floor", price: floorPrice, color: "bg-red-600" },
-        { id: "lower", name: "Lower Level", price: lowerPrice, color: "bg-blue-600" },
-        { id: "upper", name: "Upper Level", price: upperPrice, color: "bg-green-600" },
-      ],
+      sourcePrice: rawMin > 0 ? `${currency} ${rawMin}${rawMax !== rawMin ? ` - ${rawMax}` : ""} on Ticketmaster` : "Check Ticketmaster for pricing",
+      tickets,
     });
   } catch {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
