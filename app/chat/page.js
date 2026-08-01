@@ -8,14 +8,25 @@ function ChatContent() {
   const [text, setText] = useState("");
   const [userId] = useState(() => localStorage.getItem("chatUserId") || "user_" + Date.now());
   const sentRef = useRef(false);
+  const chatEndRef = useRef(null);
+  const loadedIds = useRef(new Set());
 
   const loadMessages = async () => {
-    const res = await fetch(`/api/chat?userId=${userId}`);
-    const data = await res.json();
-    setMessages(data);
+    try {
+      const res = await fetch(`/api/chat?userId=${userId}`);
+      const data = await res.json();
+      if (data.length > 0) {
+        const newMsgs = data.filter(m => !loadedIds.current.has(m.time + m.text));
+        if (newMsgs.length > 0) {
+          data.forEach(m => loadedIds.current.add(m.time + m.text));
+          setMessages(data);
+        }
+      }
+    } catch {}
   };
 
   const sendMessage = async (msg) => {
+    if (!msg.trim()) return;
     await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,20 +37,28 @@ function ChatContent() {
 
   useEffect(() => {
     localStorage.setItem("chatUserId", userId);
-    const event = searchParams.get("event");
-    const date = searchParams.get("date");
-    const venue = searchParams.get("venue");
-    const city = searchParams.get("city");
-
-    if (event && !sentRef.current) {
-      sentRef.current = true;
-      let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices for this event.`;
-      sendMessage(msg);
-    }
     loadMessages();
     const interval = setInterval(loadMessages, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const event = searchParams.get("event");
+    const date = searchParams.get("date");
+    const venue = searchParams.get("venue");
+    const city = searchParams.get("city");
+    if (event && !sentRef.current) {
+      sentRef.current = true;
+      setTimeout(() => {
+        let msg = `🎫 Price Request\nEvent: ${event}\nDate: ${date || ""}\nVenue: ${venue || ""}${city ? `, ${city}` : ""}\n\nI'd like to know the ticket prices.`;
+        sendMessage(msg);
+      }, 500);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const send = () => {
     if (!text.trim()) return;
@@ -60,6 +79,7 @@ function ChatContent() {
           </div>
         ))}
         {messages.length === 0 && <p className="text-gray-500 text-sm text-center mt-20">Start a conversation — we're here to help!</p>}
+        <div ref={chatEndRef} />
       </div>
       <div className="flex gap-2">
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-white text-sm" placeholder="Type a message..." />
