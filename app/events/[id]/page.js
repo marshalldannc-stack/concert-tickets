@@ -17,8 +17,11 @@ export default function EventDetail() {
     fetch(`https://app.ticketmaster.com/discovery/v2/events/${id}.json?apikey=D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk`)
       .then(r => r.json())
       .then(data => {
-        const priceMin = data.priceRanges?.[0]?.min || 59;
-        const priceMax = data.priceRanges?.[0]?.max || 199;
+        const rawMin = data.priceRanges?.[0]?.min || 0;
+        const rawMax = data.priceRanges?.[0]?.max || 0;
+        const floorPrice = rawMax > 0 ? rawMax : 199;
+        const lowerPrice = rawMax > 0 && rawMin > 0 ? Math.round((rawMin + rawMax) / 2) : 99;
+        const upperPrice = rawMin > 0 ? rawMin : 59;
         const currency = data.priceRanges?.[0]?.currency || "USD";
         setEvent({
           title: data.name,
@@ -28,11 +31,11 @@ export default function EventDetail() {
           venue: data._embedded?.venues?.[0]?.name || "TBA",
           city: data._embedded?.venues?.[0]?.city?.name || "",
           image: data.images?.[0]?.url,
-          priceRange: `${currency} ${priceMin} - ${priceMax}`,
+          sourcePrice: rawMin > 0 ? `${currency} ${rawMin} - ${rawMax}` : "See Ticketmaster",
           tickets: [
-            { id: "floor", name: "Floor", price: Math.round(priceMax), color: "bg-red-600" },
-            { id: "lower", name: "Lower Level", price: Math.round((priceMin + priceMax) / 2), color: "bg-blue-600" },
-            { id: "upper", name: "Upper Level", price: Math.round(priceMin), color: "bg-green-600" },
+            { id: "floor", name: "Floor", price: floorPrice, color: "bg-red-600" },
+            { id: "lower", name: "Lower Level", price: lowerPrice, color: "bg-blue-600" },
+            { id: "upper", name: "Upper Level", price: upperPrice, color: "bg-green-600" },
           ],
         });
         setLoading(false);
@@ -50,10 +53,12 @@ export default function EventDetail() {
 
   const currentSection = view !== "sections" ? event.tickets.find(t => t.id === view) : null;
   const selectedInSection = currentSection ? selected.filter(s => s.startsWith(currentSection.id)) : [];
-  const sectionPrices = { floor: event.tickets[0].price, lower: event.tickets[1].price, upper: event.tickets[2].price };
+  const sectionPrices = {};
+  event.tickets.forEach(t => { sectionPrices[t.id] = t.price; });
+  
   const total = selected.reduce((sum, s) => {
-    const section = s.split("-")[0];
-    return sum + (sectionPrices[section] || 0);
+    const section = event.tickets.find(t => s.startsWith(t.id));
+    return sum + (section ? section.price : 0);
   }, 0);
 
   const checkout = () => {
@@ -77,7 +82,7 @@ export default function EventDetail() {
         {event.time && ` • ${event.time.slice(0, 5)}`}
       </p>
       <p className="text-gray-500">{event.venue}{event.city ? `, ${event.city}` : ""}</p>
-      <p className="text-sm text-gray-400 mt-2">Ticketmaster price: {event.priceRange}</p>
+      <p className="text-sm text-gray-400 mt-1">Ticketmaster: {event.sourcePrice}</p>
 
       {view === "sections" ? (
         <div className="mt-8">
@@ -88,7 +93,7 @@ export default function EventDetail() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-lg font-bold">{ticket.name}</h3>
-                    <p className="text-2xl font-bold mt-1">${ticket.price}</p>
+                    <p className="text-2xl font-bold mt-1">${ticket.price}<span className="text-sm text-gray-400">/seat</span></p>
                   </div>
                   <span className="text-gray-400 text-sm">Select seats →</span>
                 </div>
@@ -99,10 +104,11 @@ export default function EventDetail() {
       ) : (
         <div className="mt-8">
           <button onClick={() => setView("sections")} className="text-blue-400 mb-4">← Back to sections</button>
-          <h2 className="text-xl font-bold mb-2">{currentSection.name} - ${currentSection.price}/seat</h2>
-          <p className="text-gray-400 text-sm mb-6">Tap seats to select. {selectedInSection.length} selected.</p>
+          <h2 className="text-xl font-bold mb-1">{currentSection.name}</h2>
+          <p className="text-2xl font-bold">${currentSection.price}<span className="text-sm text-gray-400">/seat</span></p>
+          <p className="text-gray-400 text-sm mt-2 mb-6">Tap seats to select. {selectedInSection.length} selected — ${selectedInSection.length * currentSection.price}</p>
           
-          <div className="mb-8 text-center text-gray-500 text-sm border border-gray-700 py-3 rounded-lg">STAGE</div>
+          <div className="mb-8 text-center text-gray-500 text-sm border border-gray-700 py-3 rounded-lg">🎤 STAGE</div>
           
           <div className="space-y-2">
             {ROWS.map(row => (
@@ -119,6 +125,7 @@ export default function EventDetail() {
                         className={`w-7 h-7 rounded-t-lg text-[10px] font-bold transition ${
                           isSelected ? `${currentSection.color} text-white` : "bg-gray-800 hover:bg-gray-600 text-gray-400"
                         }`}
+                        title={`${currentSection.name} Row ${row} Seat ${seat} - $${currentSection.price}`}
                       >
                         {seat}
                       </button>
