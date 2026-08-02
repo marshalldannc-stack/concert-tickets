@@ -15,7 +15,7 @@ function setCache(id, data) {
 async function scrapePrice(url) {
   try {
     const apiKey = process.env.SCRAPINGBEE_API_KEY || "";
-    const res = await fetch(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}&premium_proxy=true&country_code=us`);
+    const res = await fetch(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}`);
     const html = await res.text();
     const minMatch = html.match(/"min":(\d+\.?\d*)/);
     const maxMatch = html.match(/"max":(\d+\.?\d*)/);
