@@ -14,14 +14,8 @@ function setCache(id, data) {
 
 async function scrapePrice(url) {
   try {
-    const res = await fetch("https://app.scrapingbee.com/api/v1/", {
-      method: "POST",
-      body: JSON.stringify({
-        api_key: process.env.SCRAPINGBEE_API_KEY,
-        url: url,
-        render_js: true,
-      }),
-    });
+    const apiKey = process.env.SCRAPINGBEE_API_KEY || "";
+    const res = await fetch(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}&premium_proxy=true&country_code=us`);
     const html = await res.text();
     const minMatch = html.match(/"min":(\d+\.?\d*)/);
     const maxMatch = html.match(/"max":(\d+\.?\d*)/);
@@ -77,10 +71,10 @@ export async function GET(request) {
     if (data.errors) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     let tickets = null;
-    let rawMin = data.priceRanges?.[0]?.min || 0;
-    let rawMax = data.priceRanges?.[0]?.max || 0;
+    let rawMin = 0;
+    let rawMax = 0;
 
-    if (rawMin === 0 && cached) {
+    if (cached) {
       rawMin = cached.min;
       rawMax = cached.max;
     }
