@@ -15,7 +15,10 @@ export default function EventDetail() {
 
   useEffect(() => {
     const cached = sessionStorage.getItem(`ev-${id}`);
-    if (cached) { setEvent(JSON.parse(cached)); setLoading(false); return; }
+    if (cached) {
+      setEvent(JSON.parse(cached));
+      setLoading(false);
+    }
     fetch(`/api/event?id=${encodeURIComponent(id)}`)
       .then(r => r.json())
       .then(data => {
@@ -27,7 +30,16 @@ export default function EventDetail() {
       .catch(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="text-center mt-20 text-gray-400">Loading...</div>;
+  if (loading && !event) return (
+    <div className="max-w-3xl mx-auto">
+      <div className="animate-pulse">
+        <div className="h-64 bg-gray-800 rounded-xl mb-6"></div>
+        <div className="h-8 bg-gray-800 w-2/3 mb-2 rounded"></div>
+        <div className="h-4 bg-gray-800 w-1/3 mb-4 rounded"></div>
+        <p className="text-gray-400 text-center mt-10">Loading prices...</p>
+      </div>
+    </div>
+  );
   if (!event) return <div className="text-center mt-20 text-gray-400">Event not found.</div>;
 
   const toggleSeat = (sectionId, row, seat) => {
@@ -63,7 +75,9 @@ export default function EventDetail() {
       </p>
       <p className="text-gray-500">{event.venue}{event.city ? `, ${event.city}` : ""}</p>
 
-      {event.tickets && (
+      {loading && <p className="text-gray-400 text-center mt-6">Updating prices...</p>}
+
+      {event.tickets && event.tickets.length > 0 ? (
         <div className="mt-8 space-y-6">
           {event.tickets.map((ticket, idx) => {
             const sectionSeats = selected.filter(s => s.startsWith(ticket.id));
@@ -101,6 +115,12 @@ export default function EventDetail() {
             );
           })}
         </div>
+      ) : (
+        !loading && (
+          <div className="mt-8 border border-gray-700 rounded-xl p-8 text-center">
+            <p className="text-lg text-gray-400">Prices not available for this event</p>
+          </div>
+        )
       )}
 
       {selected.length > 0 && (
