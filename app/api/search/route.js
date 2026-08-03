@@ -8,7 +8,7 @@ export async function GET(request) {
   let all = [];
 
   try {
-    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${process.env.TICKETMASTER_API_KEY || "D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk"}&classificationName=music&countryCode=US&size=30`;
+    let tmUrl = `https://app.ticketmaster.com/discovery/v2/events.json?apikey=${process.env.TICKETMASTER_API_KEY || "D1foAk71GwmcUoAIVYGKtmKxC0IyQiUk"}&classificationName=music,comedy&countryCode=US&size=50`;
     if (keyword) tmUrl += `&keyword=${keyword}`;
     if (city) tmUrl += `&city=${city}`;
     const r = await fetch(tmUrl);
