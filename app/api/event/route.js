@@ -14,8 +14,19 @@ function setCache(id, data) {
 
 async function scrapePrice(url) {
   try {
-    const apiKey = process.env.SCRAPINGBEE_API_KEY || "";
-    const res = await fetch(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}&render_js=true&wait=5000`);
+    const apiKey = process.env.BRIGHTDATA_API_KEY || "5f2440f9-b848-4324-9119-0ee735dbbc83";
+    const res = await fetch("https://api.brightdata.com/request", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        zone: "web_unlocker1",
+        url: url,
+        format: "raw",
+      }),
+    });
     const html = await res.text();
     const minMatch = html.match(/"min":(\d+\.?\d*)/);
     const maxMatch = html.match(/"max":(\d+\.?\d*)/);
