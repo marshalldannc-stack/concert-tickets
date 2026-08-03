@@ -28,6 +28,21 @@ async function scrapePrice(url) {
       }),
     });
     const html = await res.text();
+    
+    const priceMatches = html.match(/\$([\d,]+)/g);
+    if (priceMatches && priceMatches.length >= 2) {
+      const prices = priceMatches
+        .map(p => parseFloat(p.replace(/[$,]/g, "")))
+        .filter(p => p > 10 && p < 100000)
+        .sort((a, b) => a - b);
+      
+      if (prices.length >= 2) {
+        return { min: prices[0], max: prices[prices.length - 1] };
+      } else if (prices.length === 1) {
+        return { min: prices[0], max: prices[0] };
+      }
+    }
+    
     const minMatch = html.match(/"min":(\d+\.?\d*)/);
     const maxMatch = html.match(/"max":(\d+\.?\d*)/);
     if (minMatch) {
